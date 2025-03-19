@@ -1,3 +1,10 @@
+import java.util.Properties
+import java.io.FileInputStream
+
+val keystoreProperties = Properties()
+val keystorePropertiesFile = rootProject.file("key.properties")
+keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
@@ -6,7 +13,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.playground_brouszer"
+    namespace = "live.anshulyadav.playground_browser"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = "27.0.12077973"
 
@@ -20,21 +27,32 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.playground_brouszer"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
+        applicationId = "live.anshulyadav.playground_browser"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        create("release") {
+            val keyAlias = keystoreProperties["keyAlias"]?.toString() ?: throw GradleException("Missing 'keyAlias' in key.properties file")
+            val keyPassword = keystoreProperties["keyPassword"]?.toString() ?: throw GradleException("Missing 'keyPassword' in key.properties file")
+            val storeFile = keystoreProperties["storeFile"]?.toString() ?: throw GradleException("Missing 'storeFile' in key.properties file")
+            val storePassword = keystoreProperties["storePassword"]?.toString() ?: throw GradleException("Missing 'storePassword' in key.properties file")
+
+            this.keyAlias = keyAlias
+            this.keyPassword = keyPassword
+            this.storeFile = file(storeFile)
+            this.storePassword = storePassword
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            isMinifyEnabled = true
+            isShrinkResources = true
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 }

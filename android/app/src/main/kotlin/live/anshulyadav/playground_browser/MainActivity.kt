@@ -1,4 +1,4 @@
-package com.example.flutter_web_browser
+package live.anshulyadav.playground_browser
 
 import io.flutter.embedding.android.FlutterActivity
 
