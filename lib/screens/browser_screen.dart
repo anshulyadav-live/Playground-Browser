@@ -3,24 +3,26 @@ import 'package:webview_flutter/webview_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class BrowserScreen extends StatefulWidget {
-  const BrowserScreen({Key? key}) : super(key: key);
+  const BrowserScreen({super.key});
 
   @override
-  _BrowserScreenState createState() => _BrowserScreenState();
+  BrowserScreenState createState() => BrowserScreenState();
 }
 
-class _BrowserScreenState extends State<BrowserScreen> {
+class BrowserScreenState extends State<BrowserScreen> {
   late WebViewController _webViewController;
-  TextEditingController _urlController = TextEditingController();
+  final TextEditingController _urlController = TextEditingController();
   String _currentUrl = 'https://www.google.com';
   bool _isLoading = true;
   List<String> _bookmarks = [];
   bool _isDesktopMode = false;
 
   // Desktop user agent string
-  final String _desktopUserAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+  final String _desktopUserAgent =
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
   // Mobile user agent string
-  final String _mobileUserAgent = 'Mozilla/5.0 (Linux; Android 13; Pixel 6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36';
+  final String _mobileUserAgent =
+      'Mozilla/5.0 (Linux; Android 13; Pixel 6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36';
 
   @override
   void initState() {
@@ -39,27 +41,28 @@ class _BrowserScreenState extends State<BrowserScreen> {
   }
 
   void _initWebView() {
-    final WebViewController controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setNavigationDelegate(
-        NavigationDelegate(
-          onPageStarted: (String url) {
-            setState(() {
-              _isLoading = true;
-            });
-          },
-          onPageFinished: (String url) {
-            setState(() {
-              _isLoading = false;
-              _currentUrl = url;
-              _urlController.text = url;
-            });
-          },
-          onWebResourceError: (WebResourceError error) {
-            print('WebView Error: ${error.description}');
-          },
-        ),
-      );
+    final WebViewController controller =
+        WebViewController()
+          ..setJavaScriptMode(JavaScriptMode.unrestricted)
+          ..setNavigationDelegate(
+            NavigationDelegate(
+              onPageStarted: (String url) {
+                setState(() {
+                  _isLoading = true;
+                });
+              },
+              onPageFinished: (String url) {
+                setState(() {
+                  _isLoading = false;
+                  _currentUrl = url;
+                  _urlController.text = url;
+                });
+              },
+              onWebResourceError: (WebResourceError error) {
+                debugPrint('WebView Error: ${error.description}');
+              },
+            ),
+          );
 
     // Set the user agent based on current mode
     _updateUserAgent(controller);
@@ -69,7 +72,9 @@ class _BrowserScreenState extends State<BrowserScreen> {
   }
 
   void _updateUserAgent(WebViewController controller) {
-    controller.setUserAgent(_isDesktopMode ? _desktopUserAgent : _mobileUserAgent);
+    controller.setUserAgent(
+      _isDesktopMode ? _desktopUserAgent : _mobileUserAgent,
+    );
   }
 
   void _toggleDesktopMode() async {
@@ -86,9 +91,15 @@ class _BrowserScreenState extends State<BrowserScreen> {
     _webViewController.reload();
 
     // Show feedback to user
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('${_isDesktopMode ? 'Desktop' : 'Mobile'} mode enabled')),
-    );
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '${_isDesktopMode ? 'Desktop' : 'Mobile'} mode enabled',
+          ),
+        ),
+      );
+    }
   }
 
   Future<void> _loadBookmarks() async {
@@ -109,24 +120,29 @@ class _BrowserScreenState extends State<BrowserScreen> {
         _bookmarks.add(url);
         _saveBookmarks();
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Bookmark added: $url')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Bookmark added: $url')));
+      }
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('This page is already bookmarked')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('This page is already bookmarked')),
+        );
+      }
     }
   }
 
   void _navigate(String input) {
     String url;
-    
+
     // Check if the input is a valid URL
-    bool isValidUrl = input.startsWith('http://') || 
-                      input.startsWith('https://') || 
-                      input.contains('.') && !input.contains(' ');
-    
+    bool isValidUrl =
+        input.startsWith('http://') ||
+        input.startsWith('https://') ||
+        input.contains('.') && !input.contains(' ');
+
     if (isValidUrl) {
       // Add https:// if the input doesn't start with http:// or https://
       if (!input.startsWith('http://') && !input.startsWith('https://')) {
@@ -140,7 +156,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
       String encodedQuery = Uri.encodeComponent(input);
       url = 'https://www.google.com/search?q=$encodedQuery';
     }
-    
+
     _webViewController.loadRequest(Uri.parse(url));
   }
 
@@ -151,7 +167,9 @@ class _BrowserScreenState extends State<BrowserScreen> {
         title: const Text('Playground Brouszer'),
         actions: [
           IconButton(
-            icon: Icon(_isDesktopMode ? Icons.desktop_windows : Icons.phone_android),
+            icon: Icon(
+              _isDesktopMode ? Icons.desktop_windows : Icons.phone_android,
+            ),
             onPressed: _toggleDesktopMode,
             tooltip: 'Toggle desktop mode',
           ),
@@ -173,9 +191,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
               children: [
                 WebViewWidget(controller: _webViewController),
                 if (_isLoading)
-                  const Center(
-                    child: CircularProgressIndicator(),
-                  ),
+                  const Center(child: CircularProgressIndicator()),
               ],
             ),
           ),
@@ -196,7 +212,10 @@ class _BrowserScreenState extends State<BrowserScreen> {
               decoration: const InputDecoration(
                 hintText: 'Enter URL',
                 border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
               ),
               keyboardType: TextInputType.url,
               textInputAction: TextInputAction.go,
@@ -275,9 +294,11 @@ class _BrowserScreenState extends State<BrowserScreen> {
                     _saveBookmarks();
                   });
                   Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Bookmark removed')),
-                  );
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Bookmark removed')),
+                    );
+                  }
                 },
               ),
             );
