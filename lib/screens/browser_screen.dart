@@ -164,7 +164,7 @@ class BrowserScreenState extends State<BrowserScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Playground Brouszer'),
+        title: const Text('Playground Browser'),
         actions: [
           IconButton(
             icon: Icon(
@@ -203,32 +203,41 @@ class BrowserScreenState extends State<BrowserScreen> {
 
   Widget _buildAddressBar() {
     return Padding(
-      padding: const EdgeInsets.all(8.0),
+      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
       child: Row(
         children: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () => _webViewController.reload(),
+          ),
           Expanded(
             child: TextField(
               controller: _urlController,
-              decoration: const InputDecoration(
-                hintText: 'Enter URL',
-                border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
+              decoration: InputDecoration(
+                hintText: 'Enter URL or search terms',
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16.0),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(24.0),
+                  borderSide: BorderSide.none,
+                ),
+                filled: true,
+                fillColor: Theme.of(context).colorScheme.surfaceVariant,
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.clear),
+                  onPressed: () {
+                    _urlController.clear();
+                  },
                 ),
               ),
-              keyboardType: TextInputType.url,
               textInputAction: TextInputAction.go,
               onSubmitted: (value) {
-                _navigate(value);
+                if (value.isNotEmpty) {
+                  _navigate(value);
+                }
               },
+              keyboardType: TextInputType.url,
             ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () {
-              _navigate(_urlController.text);
-            },
           ),
         ],
       ),
@@ -237,6 +246,7 @@ class BrowserScreenState extends State<BrowserScreen> {
 
   Widget _buildNavigationBar() {
     return BottomAppBar(
+      height: 56.0,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
@@ -249,6 +259,12 @@ class BrowserScreenState extends State<BrowserScreen> {
             },
           ),
           IconButton(
+            icon: const Icon(Icons.home),
+            onPressed: () {
+              _webViewController.loadRequest(Uri.parse('https://www.google.com'));
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.arrow_forward),
             onPressed: () async {
               if (await _webViewController.canGoForward()) {
@@ -257,15 +273,9 @@ class BrowserScreenState extends State<BrowserScreen> {
             },
           ),
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.share),
             onPressed: () {
-              _webViewController.reload();
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.home),
-            onPressed: () {
-              _navigate('https://www.google.com');
+              _shareUrl(_currentUrl);
             },
           ),
         ],
@@ -273,34 +283,93 @@ class BrowserScreenState extends State<BrowserScreen> {
     );
   }
 
+  void _shareUrl(String url) {
+    // In a real app, you would use a sharing plugin
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Share URL: $url'),
+        action: SnackBarAction(
+          label: 'Copy',
+          onPressed: () {
+            // Copy to clipboard functionality would go here
+          },
+        ),
+      ),
+    );
+  }
+
   void _showBookmarks() {
     showModalBottomSheet(
       context: context,
-      builder: (context) {
-        return ListView.builder(
-          itemCount: _bookmarks.length,
-          itemBuilder: (context, index) {
-            return ListTile(
-              title: Text(_bookmarks[index]),
-              onTap: () {
-                Navigator.pop(context);
-                _navigate(_bookmarks[index]);
-              },
-              trailing: IconButton(
-                icon: const Icon(Icons.delete),
-                onPressed: () {
-                  setState(() {
-                    _bookmarks.removeAt(index);
-                    _saveBookmarks();
-                  });
-                  Navigator.pop(context);
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Bookmark removed')),
-                    );
-                  }
-                },
-              ),
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16.0)),
+      ),
+      builder: (BuildContext context) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.6,
+          minChildSize: 0.3,
+          maxChildSize: 0.9,
+          expand: false,
+          builder: (context, scrollController) {
+            return Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Bookmarks',
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(),
+                Expanded(
+                  child: _bookmarks.isEmpty
+                      ? const Center(
+                          child: Text('No bookmarks yet'),
+                        )
+                      : ListView.builder(
+                          controller: scrollController,
+                          itemCount: _bookmarks.length,
+                          itemBuilder: (context, index) {
+                            final bookmark = _bookmarks[index];
+                            return ListTile(
+                              leading: const Icon(Icons.bookmark),
+                              title: Text(
+                                bookmark,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              trailing: IconButton(
+                                icon: const Icon(Icons.delete),
+                                onPressed: () {
+                                  setState(() {
+                                    _bookmarks.removeAt(index);
+                                    _saveBookmarks();
+                                  });
+                                  Navigator.pop(context);
+                                  _showBookmarks();
+                                },
+                              ),
+                              onTap: () {
+                                _webViewController.loadRequest(
+                                  Uri.parse(bookmark),
+                                );
+                                Navigator.pop(context);
+                              },
+                            );
+                          },
+                        ),
+                ),
+              ],
             );
           },
         );
